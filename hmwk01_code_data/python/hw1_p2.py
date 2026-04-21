@@ -29,8 +29,28 @@ def multiview_CCA_train(XtX, CCAdim):
     #       you must make sure the eigenvalues are in descending order such that the projections
     #       correspond to the ordering from largest to smallest eigenvalues
 
-    A = [...] # a list of np.arrays, where A[i] is of dimension dims[i]*CCAdim
-    L = ... # L is an np.array of dimension CCAdim
+    # Full block covariance matrix, then separate into cross- and auto-covariance blocks
+    X_mat_full = np.block([[XtX[i][j] if j >= i else XtX[j][i].T for j in range(nViews)] for i in range(nViews)])
+    X_mat_diagonal = scipy.linalg.block_diag(*[XtX[i][i] for i in range(nViews)])
+    X_mat_off_diagonal = X_mat_full - X_mat_diagonal
+
+    eigvals, v = scipy.linalg.eig(X_mat_off_diagonal, X_mat_diagonal)
+
+    # Sort descending by real part, discard imaginary noise
+    eigvals = eigvals.real
+    v = v.real
+    idx = np.argsort(eigvals)[::-1]
+    eigvals, v = eigvals[idx], v[:, idx]
+
+    L = eigvals[:CCAdim]
+    v_top = v[:, :CCAdim]
+
+    # Split stacked eigenvectors back into per-view projection matrices
+    A = []
+    offset = 0
+    for i in range(nViews):
+        A.append(v_top[offset:offset + dims[i], :])
+        offset += dims[i]
 
     return A, L
 
@@ -43,7 +63,7 @@ featdim = 200 # feature dimensions (of input PCA features)
 CCAdim = 500 # desired CCA dimension, note that CCAdim < featdim*nViews
 
 # load database features, which are already PCA transformed into 200 dimensions
-data_path = '../data_p2'
+data_path = 'hmwk01_code_data/data_p2'
 X = loadmat(os.path.join(data_path, 'DatabaseFeature_small.mat'), simplify_cells=True)['X']
 nViews = len(X) # number of views
 X = [X[i] for i in range(nViews)]
@@ -59,7 +79,7 @@ A, L = multiview_CCA_train(XtX, CCAdim)
 # -----------------------------------------
 # TODO: compute shared representation Y
 #
-Y = ... 
+Y = np.mean(np.stack([X[i] @ A[i] for i in range(nViews)], axis=0), axis=0)
 
 # "magic" weights on the p-th dimension: 1/sqrt(nViews-1-Lp)
 # more weights on the top dimensions
@@ -101,9 +121,20 @@ accuracy = np.stack([(topRetrievedLabels[viewID][0] == GT_labels[:numQueryToEval
                     .mean() for viewID in range(nViews)], 0)
 print(f'Mean Accuracy: {accuracy.mean() * 100:.1f}%')
 
-#  -----------------------------------------
-#  TODO: use the more naive shared representation of Y
-#  which is the average of X[i]'s i=1,2,3. 
-#  modify the query code above and report mean accuracy.
-#  Hint: queryImgFeat is just Q[viewId] in this case.
-#
+# Naive baseline: shared representation is the mean of raw view features
+# (requires re-loading X since it was deleted above)
+X_naive = loadmat(os.path.join(data_path, 'DatabaseFeature_small.mat'), simplify_cells=True)['X']
+X_naive = [X_naive[i] for i in range(nViews)]
+Y_naive = np.mean(np.stack(X_naive, axis=0), axis=0)
+
+topRetrievedLabels_naive = []
+for viewID in range(nViews):
+    numQueries = Q[viewID].shape[0]
+    queryImgFeat = Q[viewID]
+    distance = np.linalg.norm(queryImgFeat.reshape(numQueries, 1, -1) - Y_naive, axis=2)
+    sortedIdx = distance.argsort()[:, :k]
+    topRetrievedLabels_naive.append(sortedIdx.T)
+
+accuracy_naive = np.stack([(topRetrievedLabels_naive[viewID][0] == GT_labels[:numQueryToEvaluate])
+                           .mean() for viewID in range(nViews)], 0)
+print(f'Naive Mean Accuracy: {accuracy_naive.mean() * 100:.1f}%')
