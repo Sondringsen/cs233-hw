@@ -36,9 +36,13 @@ def multiview_CCA_train(XtX, CCAdim):
 
     eigvals, v = scipy.linalg.eig(X_mat_off_diagonal, X_mat_diagonal)
 
-    # Sort descending by real part, discard imaginary noise
+    # Discard imaginary noise, then B-normalize: v^T B v = 1
     eigvals = eigvals.real
     v = v.real
+    norms = np.sqrt(np.diag(v.T @ X_mat_diagonal @ v))
+    v = v / norms
+
+    # Sort descending by real part
     idx = np.argsort(eigvals)[::-1]
     eigvals, v = eigvals[idx], v[:, idx]
 
@@ -60,7 +64,7 @@ def multiview_CCA_train(XtX, CCAdim):
 
 # configuration
 featdim = 200 # feature dimensions (of input PCA features)
-CCAdim = 500 # desired CCA dimension, note that CCAdim < featdim*nViews
+CCAdim = 100 # desired CCA dimension, note that CCAdim < featdim*nViews
 
 # load database features, which are already PCA transformed into 200 dimensions
 data_path = 'hmwk01_code_data/data_p2'
