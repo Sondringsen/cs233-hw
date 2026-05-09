@@ -35,16 +35,13 @@ def plot2d(data, title=None, filename: str | None = None):
 	plt.scatter(data[:, 0], data[:, 1])
 	plt.axis('equal')
 	plt.title(title)
-	if filename: plt.savefig(BASE_PLOT_DIR / Path(filename))
-	# plt.show()
-	plt.close()
+	if filename: 
+		plt.savefig(BASE_PLOT_DIR / Path(filename))
+		plt.close()
+	else:
+		plt.show()
 
-
-def main():
-	pass
-	# -----------------------------------------------------------------------
-	# 1. Sample from a unit circle.
-	# -----------------------------------------------------------------------
+def problem2_1():
 	n = 100
 	u = np.random.uniform(0, 2*np.pi, size=n)
 	data = np.array([np.cos(u), np.sin(u)]).T
@@ -55,10 +52,7 @@ def main():
 	plt.savefig(BASE_PLOT_DIR / Path('sample_circle_bd.png'))
 	plt.close()
 
-	# -----------------------------------------------------------------------
-	# 2. Sample from a pair of circles with Gaussian noise.
-	#    Consider overlapping and non-overlapping cases.
-	# -----------------------------------------------------------------------
+def problem2_2():
 	n = 100
 	u = np.random.uniform(0, 2*np.pi, size=2*n)
 
@@ -118,22 +112,125 @@ def main():
 	plt.savefig(BASE_PLOT_DIR / Path('non_overlapping_noise_bd.png'))
 	plt.close()
 
+def problem2_3():
+	n = 100
+	u = np.random.uniform(0, 2*np.pi, size=n)
+	background = np.random.uniform(-1, 1, size=(n, 2))
+	data = np.array([np.cos(u), np.sin(u)]).T
+	data = np.concatenate((data, background))
+
+	plot2d(data, title='Circle with background noise', filename='circle_background.png')
+
+def problem2_4():
+	k = 5
+	n = 100
+	u = np.random.uniform(0, 2*np.pi, size=n)
+	background = np.random.uniform(-1, 1, size=(n, 2))
+	data = np.array([np.cos(u), np.sin(u)]).T
+	data = np.concatenate((data, background))
+
+	distance = np.zeros(shape=(2*n,2*n))
+	for i in range(2*n):
+		for j in range(2*n):
+			# if i < j: continue
+			
+			distance[i, j] = np.sum((data[i] - data[j])**2)**(1/2)
+	
+	xgood, xbad = codensity(data, distance, k, n)
+
+	_, axes = plt.subplots(1, 3, figsize=(15, 5))
+	for ax, pts, title in zip(axes, [data, xgood, xbad], ['All points', 'Good points', 'Bad points']):
+		ax.scatter(pts[:, 0], pts[:, 1])
+		ax.set_aspect('equal')
+		ax.set_title(title)
+	plt.tight_layout()
+	plt.savefig(BASE_PLOT_DIR / Path('codensity_filter.png'))
+	plt.close()
+
+def problem2_5():
+	ks = [1, 2, 3]
+	n = 100
+	
+	_, axs = plt.subplots(1, len(ks), figsize=(8 * len(ks), 6))
+
+	for i, k in enumerate(ks):
+		data = np.random.normal(size=(n, k+1))
+		norm = np.linalg.norm(data, axis=1, keepdims=True)
+		data = data/norm
+
+		dgms = ripser(data, maxdim=k)["dgms"]
+		plot_diagrams(dgms, ax=axs[i])
+		axs[i].set_title(f'{k}-sphere')
+
+	plt.tight_layout()
+	plt.savefig(BASE_PLOT_DIR / Path('betti_profiles.png'))
+	plt.close()
+
+def problem2_6():
+	ks = [1, 2, 3]
+	n = 100
+	
+	_, axs = plt.subplots(1, len(ks), figsize=(8 * len(ks), 6))
+
+	for s, k in enumerate(ks):
+		data = np.random.normal(size=(n, k+1))
+		norm = np.linalg.norm(data, axis=1, keepdims=True)
+		data = data/norm
+
+		noise = -2 + 4*np.random.randn(n, k + 1)
+		data = np.concatenate((data, noise))
+
+		distance = np.zeros(shape=(2*n,2*n))
+		for i in range(2*n):
+			for j in range(2*n):
+				# if i < j: continue
+				
+				distance[i, j] = np.sum((data[i] - data[j])**2)**(1/2)
+		
+		xgood, _ = codensity(data, distance, k, n)
+		
+		dgms = ripser(xgood, maxdim=k)["dgms"]
+		plot_diagrams(dgms, ax=axs[s])
+		axs[s].set_title(f'{k}-sphere')
+
+	plt.tight_layout()
+	plt.savefig(BASE_PLOT_DIR / Path('betti_profiles_noise.png'))
+	plt.close()
+	
+
+def main():
+	pass
+	# -----------------------------------------------------------------------
+	# 1. Sample from a unit circle.
+	# -----------------------------------------------------------------------
+	# problem2_1()
+
+	# -----------------------------------------------------------------------
+	# 2. Sample from a pair of circles with Gaussian noise.
+	#    Consider overlapping and non-overlapping cases.
+	# -----------------------------------------------------------------------
+	# problem2_2()
+
 	# -----------------------------------------------------------------------
 	# 3. Sample from a noisy circle and add background noise from a square film.
 	# -----------------------------------------------------------------------
+	# problem2_3()
 
 	# -----------------------------------------------------------------------
 	# 4. Denoise the points in 3 based on codensity.
 	# -----------------------------------------------------------------------
-
+	# problem2_4()
+	
 	# -----------------------------------------------------------------------
 	# 5. Sample n points from k-spheres and try to recover Betti profiles.
 	# -----------------------------------------------------------------------
+	# problem2_5()
 
 	# -----------------------------------------------------------------------
 	# 6. Add uniform Gaussian noise with mean=-2, stdev=4 to points in 5.
 	#    Denoise based on codensity and recover Betti profiles.
 	# -----------------------------------------------------------------------
+	problem2_6()
 
 
 if __name__ == '__main__':
