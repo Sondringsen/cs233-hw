@@ -122,7 +122,7 @@ def problem2_3():
 	plot2d(data, title='Circle with background noise', filename='circle_background.png')
 
 def problem2_4():
-	k = 5
+	k = 10
 	n = 100
 	u = np.random.uniform(0, 2*np.pi, size=n)
 	background = np.random.uniform(-1, 1, size=(n, 2))
@@ -219,7 +219,7 @@ def main():
 	# -----------------------------------------------------------------------
 	# 4. Denoise the points in 3 based on codensity.
 	# -----------------------------------------------------------------------
-	# problem2_4()
+	problem2_4()
 	
 	# -----------------------------------------------------------------------
 	# 5. Sample n points from k-spheres and try to recover Betti profiles.
@@ -230,7 +230,7 @@ def main():
 	# 6. Add uniform Gaussian noise with mean=-2, stdev=4 to points in 5.
 	#    Denoise based on codensity and recover Betti profiles.
 	# -----------------------------------------------------------------------
-	problem2_6()
+	# problem2_6()
 
 
 if __name__ == '__main__':
