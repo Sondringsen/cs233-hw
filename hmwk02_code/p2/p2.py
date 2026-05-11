@@ -122,19 +122,14 @@ def problem2_3():
 	plot2d(data, title='Circle with background noise', filename='circle_background.png')
 
 def problem2_4():
-	k = 10
+	k = 5
 	n = 100
 	u = np.random.uniform(0, 2*np.pi, size=n)
 	background = np.random.uniform(-1, 1, size=(n, 2))
 	data = np.array([np.cos(u), np.sin(u)]).T
 	data = np.concatenate((data, background))
 
-	distance = np.zeros(shape=(2*n,2*n))
-	for i in range(2*n):
-		for j in range(2*n):
-			# if i < j: continue
-			
-			distance[i, j] = np.sum((data[i] - data[j])**2)**(1/2)
+	distance = np.linalg.norm(data[:, None] - data[None, :], axis=-1)
 	
 	xgood, xbad = codensity(data, distance, k, n)
 
@@ -148,7 +143,7 @@ def problem2_4():
 	plt.close()
 
 def problem2_5():
-	ks = [1, 2, 3]
+	ks = [1, 2, 3, 4]
 	n = 100
 	
 	_, axs = plt.subplots(1, len(ks), figsize=(8 * len(ks), 6))
@@ -158,7 +153,7 @@ def problem2_5():
 		norm = np.linalg.norm(data, axis=1, keepdims=True)
 		data = data/norm
 
-		dgms = ripser(data, maxdim=k)["dgms"]
+		dgms = ripser(data, maxdim=ks[-1])["dgms"]
 		plot_diagrams(dgms, ax=axs[i])
 		axs[i].set_title(f'{k}-sphere')
 
@@ -169,8 +164,8 @@ def problem2_5():
 def problem2_6():
 	ks = [1, 2, 3]
 	n = 100
-	
-	_, axs = plt.subplots(1, len(ks), figsize=(8 * len(ks), 6))
+
+	fig, axs = plt.subplots(2, len(ks), figsize=(8 * len(ks), 12))
 
 	for s, k in enumerate(ks):
 		data = np.random.normal(size=(n, k+1))
@@ -180,22 +175,21 @@ def problem2_6():
 		noise = -2 + 4*np.random.randn(n, k + 1)
 		data = np.concatenate((data, noise))
 
-		distance = np.zeros(shape=(2*n,2*n))
-		for i in range(2*n):
-			for j in range(2*n):
-				# if i < j: continue
-				
-				distance[i, j] = np.sum((data[i] - data[j])**2)**(1/2)
-		
-		xgood, _ = codensity(data, distance, k, n)
-		
-		dgms = ripser(xgood, maxdim=k)["dgms"]
-		plot_diagrams(dgms, ax=axs[s])
-		axs[s].set_title(f'{k}-sphere')
+		distance = np.linalg.norm(data[:, None] - data[None, :], axis=-1)
 
-	plt.tight_layout()
-	plt.savefig(BASE_PLOT_DIR / Path('betti_profiles_noise.png'))
-	plt.close()
+		dgms_before = ripser(data, maxdim=ks[-1])["dgms"]
+		plot_diagrams(dgms_before, ax=axs[0, s])
+		axs[0, s].set_title(f'{k}-sphere (before cleaning)')
+
+		xgood, _ = codensity(data, distance, k, n)
+
+		dgms = ripser(xgood, maxdim=ks[-1])["dgms"]
+		plot_diagrams(dgms, ax=axs[1, s])
+		axs[1, s].set_title(f'{k}-sphere (after cleaning)')
+
+	fig.tight_layout()
+	fig.savefig(BASE_PLOT_DIR / Path('betti_profiles_noise.png'))
+	plt.close(fig)
 	
 
 def main():
@@ -219,7 +213,7 @@ def main():
 	# -----------------------------------------------------------------------
 	# 4. Denoise the points in 3 based on codensity.
 	# -----------------------------------------------------------------------
-	problem2_4()
+	# problem2_4()
 	
 	# -----------------------------------------------------------------------
 	# 5. Sample n points from k-spheres and try to recover Betti profiles.
@@ -230,7 +224,7 @@ def main():
 	# 6. Add uniform Gaussian noise with mean=-2, stdev=4 to points in 5.
 	#    Denoise based on codensity and recover Betti profiles.
 	# -----------------------------------------------------------------------
-	# problem2_6()
+	problem2_6()
 
 
 if __name__ == '__main__':
