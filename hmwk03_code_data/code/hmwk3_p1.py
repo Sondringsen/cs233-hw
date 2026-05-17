@@ -83,6 +83,17 @@ def hog_extraction(image):
 	)
 	return fd, hog_image
 
+def get_object_str(obj: int) -> str:
+	if obj < 10:
+		obj_str = f"00{obj}"
+	elif obj < 100:
+		obj_str = f"0{obj}"
+	elif obj == 100:
+		obj_str = f"100"
+
+	return obj_str
+
+
 
 # ------ Your code here ------- #
 # TODO: implement function hog_extraction
@@ -92,10 +103,11 @@ def hog_extraction(image):
 # ----------------------------- #
 def concat_hog(obj: int = 1) -> np.ndarray:
 	assert obj >= 1 and obj <= 100, "Object must be between 1 and 100"
+	obj_str = get_object_str(obj)
 	hog_features = []
 
 	for view in range(16):
-		image = skimage.io.imread(rendering_dir + f"/00{obj}_{view}.png", as_gray=True)
+		image = skimage.io.imread(rendering_dir + f"/{obj_str}_{view}.png", as_gray=True)
 		fd, _ = hog_extraction(image)
 		hog_features.append(fd)
 
@@ -135,17 +147,18 @@ def pairwise_dissimilarity(feat1, feat2):
 	# ------ Your code here ------- #
 	# ----------------------------- #
 	V = 16
-	D = np.zeros((V, V), float)
-	for theta1 in range(V):
-		for theta2 in range(V):
-			rotation1 = np.roll(feat1, theta1, axis=0)
-			rotation2 = np.roll(feat2, theta2, axis=0)
-			D[theta1, theta2] = np.linalg.norm(rotation1 - rotation2)
+	norm1_sq = np.sum(feat1 ** 2)
+	norm2_sq = np.sum(feat2 ** 2)
+
+	cross = np.array([np.sum(feat1 * np.roll(feat2, delta, axis=0)) for delta in range(V)])
+
+	deltas = (np.arange(V)[np.newaxis, :] - np.arange(V)[:, np.newaxis]) % V
+	D = np.sqrt(np.maximum(norm1_sq + norm2_sq - 2 * cross[deltas], 0))
 
 	return D
 
 # Visualization
-def visualization_p1b():
+def visualize_p1b():
 	feat1 = concat_hog(1)
 	feat2 = concat_hog(2)
 	D = pairwise_dissimilarity(feat1, feat2)
@@ -190,7 +203,64 @@ def visualization_p1b():
 # TODO: build unary vector U
 # TODO: call MRF solver from mrf.py to jointly align shapes
 # ----------------------------- #
+def joint_shape_alignment():
+	sigma = 1.0
+	num_shapes = 100
+	num_views = 16
 
+	# Data loading to save time
+	F = []
+	for i in range(1, num_shapes + 1):
+		feat = concat_hog(i)
+		F.append(feat)
+	print("Data loading done")
+
+	W = np.zeros((num_shapes*num_views, num_shapes*num_views), float)
+	for i in range(num_shapes):
+		for j in range(i, num_shapes):
+			D_ij = pairwise_dissimilarity(F[i], F[j])
+			W_ij = np.exp(-D_ij / sigma)
+			W[i*num_views:(i+1)*num_views, j*num_views:(j+1)*num_views] = W_ij
+			if i != j:
+				W[j*num_views:(j+1)*num_views, i*num_views:(i+1)*num_views] = W_ij.T
+	print("Pairwise affinities done")
+	
+	U = np.random.uniform(0, 1, size=num_shapes*num_views)
+
+
+	return mrf(W, U, np.repeat(np.arange(num_shapes), num_views), np.tile(np.arange(num_views), num_shapes), 30, 200)
+
+
+
+# Visualize
+def visualize_p1c():
+	import zipfile
+	num_shapes = 100
+
+	sol, score, labels = joint_shape_alignment()
+
+	fig, axs = plt.subplots(3, 3, figsize=(9, 9))
+	zip_path = PLOT_SAVE_PATH / "optimal_alignment.zip"
+
+	with zipfile.ZipFile(zip_path, 'w') as zf:
+		for i in range(num_shapes):
+			obj_str = get_object_str(i + 1)
+			view = labels[i]
+			img_path = rendering_dir + f"/{obj_str}_{view}.png"
+
+			if i < 9:
+				image = skimage.io.imread(img_path)
+				ax = axs[i // 3][i % 3]
+				ax.imshow(image)
+				ax.set_title(f"Obj {i+1}, view {view}")
+				ax.axis('off')
+
+			zf.write(img_path, f"obj_{obj_str}_view_{view}.png")
+
+	plt.suptitle("Optimal alignment per shape")
+	plt.tight_layout()
+	plt.savefig(PLOT_SAVE_PATH / "optimal_alignment.png")
+	print(f"Zip saved to {zip_path}")
 
 
 
@@ -204,6 +274,9 @@ def main():
 
 	# 1b
 	# visualization_p1b()
+
+	# 1c
+	# visualize_p1c()
 
 if __name__ == "__main__":
 	main()
