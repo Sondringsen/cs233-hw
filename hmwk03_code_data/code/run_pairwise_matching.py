@@ -8,10 +8,10 @@ from mrf import mrf
 
 # Set 'true' for comparing with mobius matching.
 
-mesh_dir = '../data_p2/meshes/'
+mesh_dir = 'hmwk03_code_data/data_p2/meshes/'
 
-output_dir = '../outputs_p2/pairwise_matching'
-landmark_filepath = '../data_p2/landmark_vids.txt'
+output_dir = 'hmwk03_code_data/outputs_p2/pairwise_matching'
+landmark_filepath = 'hmwk03_code_data/data_p2/landmark_vids.txt'
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -57,7 +57,27 @@ for k in range(num_test_meshes):
     test_geod_dists = compute_all_pair_normalized_geodesics(test_mesh_info, landmark_vids)
 
     # ---- Fill Here ---- #
+    L = num_landmarks
 
+    diff = template_geod_dists[:, np.newaxis, :, np.newaxis] - test_geod_dists[np.newaxis, :, np.newaxis, :]
+    M = np.exp(-diff ** 2 / (2 * param_sigma)).reshape(L * L, L * L)
+
+    self_node_mask = np.repeat(np.eye(L, dtype=bool), L, axis=0)
+    self_node_mask = np.repeat(self_node_mask, L, axis=1)
+    M[self_node_mask] = 0.0
+
+    U = np.random.uniform(0, 1, size=L * L) * 1e-3
+    node_indices = np.repeat(np.arange(L), L)
+    label_indices = np.tile(np.arange(L), L)
+
+    sol, score, matched_labels = mrf(M, U, node_indices, label_indices, 30, 200)
+
+    C = np.zeros((L, L), int)
+    for i, a in enumerate(matched_labels):
+        C[i, a] = 1
+    per_mesh_acc = float(np.diagonal(C).sum() / num_landmarks)
+    bijective = len(set(matched_labels)) == num_landmarks
+    print(f'  {test_name}: per-mesh accuracy = {per_mesh_acc:.2f}  bijective={bijective}')
     # -------- $
 
     C_acc += C

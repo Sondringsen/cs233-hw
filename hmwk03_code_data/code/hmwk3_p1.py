@@ -117,7 +117,7 @@ def concat_hog(obj: int = 1) -> np.ndarray:
 # Visualization
 def visualize_p1a():
 	for obj in range(1, 4):
-		for view in range(3):
+		for view in [0, 4, 8]:
 			image = skimage.io.imread(rendering_dir + f"/00{obj}_{view}.png", as_gray=True)
 			_, hog_image = hog_extraction(image)
 			save_hog_image(hog_image, f"Hog image object = {obj}, view = {view}", PLOT_SAVE_PATH / f"hog_image_00{obj}_{view}.png")
@@ -166,14 +166,11 @@ def visualize_p1b():
 	plt.savefig(PLOT_SAVE_PATH / "d_matrix.png")
 	
 	# Finding best and worst alignment
-	print(np.argmax(D))
 	best_flat_idx = np.argmin(D)
 	b_i, b_j = np.unravel_index(best_flat_idx, D.shape)
-	print(b_i, b_j)
 
 	worst_flat_idx = np.argmax(D)
 	w_i, w_j = np.unravel_index(worst_flat_idx, D.shape)
-	print(w_i, w_j)
 
 	fig, axs = plt.subplots(2, 2)
 
@@ -204,7 +201,7 @@ def visualize_p1b():
 # TODO: call MRF solver from mrf.py to jointly align shapes
 # ----------------------------- #
 def joint_shape_alignment():
-	sigma = 1.0
+	sigma = 10.0
 	num_shapes = 100
 	num_views = 16
 
@@ -219,6 +216,8 @@ def joint_shape_alignment():
 	for i in range(num_shapes):
 		for j in range(i, num_shapes):
 			D_ij = pairwise_dissimilarity(F[i], F[j])
+			off_diag = ~np.eye(num_views, dtype=bool)
+			D_ij[off_diag] -= D_ij[off_diag].min()
 			W_ij = np.exp(-D_ij / sigma)
 			W[i*num_views:(i+1)*num_views, j*num_views:(j+1)*num_views] = W_ij
 			if i != j:
@@ -245,7 +244,7 @@ def visualize_p1c():
 	with zipfile.ZipFile(zip_path, 'w') as zf:
 		for i in range(num_shapes):
 			obj_str = get_object_str(i + 1)
-			view = labels[i]
+			view = (num_views - labels[i]) % num_views
 			img_path = rendering_dir + f"/{obj_str}_{view}.png"
 
 			if i < 9:
@@ -268,15 +267,13 @@ def visualize_p1c():
 def main():
 	pass
 	# 1a
-	# hog_features = concat_hog()
-	# print(hog_features)
-	# visualize_p1a()
+	visualize_p1a()
 
 	# 1b
-	# visualization_p1b()
+	visualize_p1b()
 
 	# 1c
-	# visualize_p1c()
+	visualize_p1c()
 
 if __name__ == "__main__":
 	main()

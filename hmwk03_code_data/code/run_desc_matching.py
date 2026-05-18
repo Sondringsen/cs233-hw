@@ -5,10 +5,10 @@ import scipy.optimize
 from utils import load_landmark_file, load_mesh_info, visualize_mat
 
 
-mesh_dir = '../data_p2/meshes/'
+mesh_dir = 'hmwk03_code_data/data_p2/meshes/'
 
-output_dir = '../outputs_p2/desc_matching'
-landmark_filepath = '../data_p2/landmark_vids.txt'
+output_dir = 'hmwk03_code_data/outputs_p2/desc_matching'
+landmark_filepath = 'hmwk03_code_data/data_p2/landmark_vids.txt'
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -46,6 +46,15 @@ for k in range(num_test_meshes):
     # But any reasonable heuristic algorithm is also accepted.
 
     # ---- FILL HERE - --- $
+    test_relevant_vertices = test_mesh_info['feature'][landmark_vids]
+    template_relevant_vertices = template_mesh_info['feature'][landmark_vids]
+    diff = test_relevant_vertices[:, np.newaxis, :] - template_relevant_vertices[np.newaxis, :, :]
+    cost = np.linalg.norm(diff, axis=2)
+
+    row_ind, col_ind = scipy.optimize.linear_sum_assignment(cost)
+
+    C = np.zeros(cost.shape, int)
+    C[row_ind, col_ind] = 1
 
     # -------- $
 
