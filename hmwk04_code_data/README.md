@@ -12,9 +12,10 @@ source hw4_env/bin/activate             # activate that environment
 pip install --upgrade pip               # upgrade pip
 ```
 
-**[GPU Only]** If you are on a GPU system, we will install PyTorch with a suitable GPU version (using CUDA 11.3):
+**[GPU Only]** If you are on a GPU system, we will install PyTorch with a suitable GPU version (using CUDA 12.8):
 ```
-pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+pip install torch torchvision torchaudio --index-url https://
+download.pytorch.org/whl/cu128
 ```
 
 **[CPU Only]** If you are not using GPU, we will install PyTorch without CUDA:
