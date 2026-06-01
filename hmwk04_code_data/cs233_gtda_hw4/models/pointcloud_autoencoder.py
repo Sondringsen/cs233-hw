@@ -26,7 +26,9 @@ class PointcloudAutoencoder(nn.Module):
         """Forward pass of the AE
             :param pointclouds: B x N x 3
         """
-        raise NotImplementedError
+        latent = self.encoder(pointclouds)
+        return self.decoder(latent).view(pointclouds.shape)
+
         
 
     def train_for_one_epoch(self, loader, optimizer, device='cuda'):
@@ -38,18 +40,38 @@ class PointcloudAutoencoder(nn.Module):
         """        
         self.train()
         loss_meter = AverageMeter()
-        # ...
-        # ...
-        raise NotImplementedError
-        return loss_meter.avg
-    
+        for idx, batch in enumerate(loader):
+            batch = batch['point_cloud'].to(device)
+
+            pred = self(batch)
+            loss = chamfer_loss(batch, pred).mean()
+            loss_meter.update(loss.item(), len(batch))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        return loss_meter.avg, loss_meter.avg, 0.0
+
+    @torch.no_grad()
+    def evaluate_losses(self, loader, device='cuda'):
+        """ Evaluate chamfer loss on a loader without updating weights.
+        :return: tuple of (combined_loss, chamfer_loss, part_loss) — part_loss is 0 for this model.
+        """
+        self.eval()
+        loss_meter = AverageMeter()
+        for batch in loader:
+            pointclouds = batch['point_cloud'].to(device)
+            pred = self(pointclouds)
+            loss = chamfer_loss(pointclouds, pred).mean()
+            loss_meter.update(loss.item(), len(pointclouds))
+        return loss_meter.avg, loss_meter.avg, 0.0
+
     @torch.no_grad()
     def embed(self, pointclouds):
         """ Extract from the input pointclouds the corresponding latent codes.
         :param pointclouds: B x N x 3
         :return: B x latent-dimension of AE
         """
-        raise NotImplementedError
+        return self.encoder(pointclouds)
         
 
     @torch.no_grad()
@@ -59,5 +81,7 @@ class PointcloudAutoencoder(nn.Module):
         :param device: cpu? cuda?
         :return: Left for students to decide
         """
-        raise NotImplementedError
-        
+        reconstructed_pointclouds = []
+        for batch in loader:
+            reconstructed_pointclouds.append(self(batch['point_cloud'].to(device)))
+        return torch.cat(reconstructed_pointclouds, dim=0)

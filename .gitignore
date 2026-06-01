@@ -1,9 +1,11 @@
 .DS_Store
+__pycache__/
 plots/
 *.png
 *txt
 *.obj
 *.zip
+.hw4_env
 
 
 # Byte-compiled / optimized / DLL files

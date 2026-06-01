@@ -23,7 +23,13 @@ class PointNet(nn.Module):
         :param conv_dims: output point dimensionality of each layer
         """
         super(PointNet, self).__init__()
-        raise NotImplementedError
+        self.model = nn.Sequential()
+        for i in range(len(conv_dims)):
+            prev_dim = init_feat_dim if i == 0 else conv_dims[i - 1]
+            self.model.append(nn.Conv1d(prev_dim, conv_dims[i], 1)) # What to set for kernel size?
+            self.model.append(nn.ReLU())
+        # self.model.append(nn.MaxPool1d(conv_dims[-1]))
+
         
         
     def forward(self, pointclouds):
@@ -31,4 +37,7 @@ class PointNet(nn.Module):
         Run forward pass of the PointNet model on a given point cloud.
         :param pointclouds: (B x N x 3) point cloud
         """
-        raise NotImplementedError
+        pointclouds = pointclouds.transpose(1, 2)
+        model_output = self.model(pointclouds)
+        max_pooling = torch.max(model_output, dim=-1).values
+        return max_pooling

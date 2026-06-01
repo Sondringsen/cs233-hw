@@ -19,7 +19,7 @@ class MLP(nn.Module):
     or other non-requested features, for the non-bonus question.
     """
 
-    def __init__(self, in_feat_dim, out_channels, b_norm=False, dropout_rate=0, non_linearity=nn.ReLU(inplace=True)):
+    def __init__(self, in_feat_dim, out_channels, b_norm=False, dropout_rate=0.0, non_linearity=nn.ReLU(inplace=True)):
         """Constructor
         :param in_feat_dim: input feature dimension
         :param out_channels: list of ints describing each the number hidden/final neurons.
@@ -28,7 +28,23 @@ class MLP(nn.Module):
         :param non_linearity: nn.Module
         """
         super(MLP, self).__init__()
-        raise NotImplementedError
+        self.model = nn.Sequential()
+        for i in range(len(out_channels)):
+            prev_dim = in_feat_dim if i == 0 else out_channels[i - 1]
+            self.model.append(nn.Linear(prev_dim, out_channels[i]))
+
+            is_last = (i == len(out_channels) - 1)
+            if is_last:
+                continue
+
+            use_bn = b_norm if isinstance(b_norm, bool) else b_norm[i]
+            if use_bn:
+                self.model.append(nn.BatchNorm1d(out_channels[i]))
+
+            dropout = dropout_rate if isinstance(dropout_rate, float) else dropout_rate[i]
+            self.model.append(nn.Dropout(dropout))
+
+            self.model.append(non_linearity)
 
         
     def forward(self, x):
@@ -36,4 +52,4 @@ class MLP(nn.Module):
         Run forward pass of MLP
         :param x: (B x in_feat_dim) point cloud
         """
-        raise NotImplementedError
+        return self.model(x)
