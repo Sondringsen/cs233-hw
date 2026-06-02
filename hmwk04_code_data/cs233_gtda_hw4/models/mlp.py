@@ -42,7 +42,8 @@ class MLP(nn.Module):
                 self.model.append(nn.BatchNorm1d(out_channels[i]))
 
             dropout = dropout_rate if isinstance(dropout_rate, float) else dropout_rate[i]
-            self.model.append(nn.Dropout(dropout))
+            if dropout > 0:
+                self.model.append(nn.Dropout(dropout))
 
             self.model.append(non_linearity)
 
